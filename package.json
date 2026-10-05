@@ -1,7 +1,7 @@
 {
   "name": "notepad-hyper",
   "version": "0.1.0",
-  "author": "Alex",
+  "author": "Rodion224",
   "license": "MIT",
   "type": "module",
   "main": "electron/main.cjs",
@@ -10,7 +10,52 @@
     "build": "tsc && vite build",
     "app": "vite build && electron .",
     "start": "vite build && electron .",
+    "dist": "npm run build && electron-builder --win",
+    "dist:portable": "npm run build && electron-builder --win portable",
     "preview": "vite preview"
+  },
+  "build": {
+    "appId": "com.hyperedit.app",
+    "productName": "HyperEdit",
+    "copyright": "Copyright © 2026 Rodion224",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "electron/icon.ico"
+    },
+    "portable": {
+      "artifactName": "HyperEdit.exe"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "electron/icon.ico",
+      "uninstallerIcon": "electron/icon.ico",
+      "uninstallDisplayName": "HyperEdit",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "HyperEdit"
+    }
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.18.6",
@@ -49,6 +94,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.21",
     "electron": "^44.5.1",
+    "electron-builder": "^26.15.3",
     "postcss": "^8.5.3",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.8.2",
