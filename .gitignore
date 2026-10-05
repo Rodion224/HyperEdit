@@ -10,6 +10,7 @@ dist/
 dist-ssr/
 out/
 build/
+release/
 
 # Tauri build artifacts (if applicable)
 src-tauri/target/
