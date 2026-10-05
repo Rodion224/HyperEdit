@@ -46,6 +46,9 @@
 
 Приложение полностью автономно и работает **без интернета**.
 
+### Скачать готовую версию
+* **[Скачать HyperEdit.exe (v0.1.0)](https://github.com/Rodion224/HyperEdit/releases/latest/download/HyperEdit.exe)**
+
 ### Быстрый запуск
 * Дважды кликните по файлу `launch.bat` (Windows).
 
