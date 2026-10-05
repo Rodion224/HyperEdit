@@ -116,6 +116,7 @@ export interface ElectronAPI {
   installContextMenu: (language?: string) => Promise<boolean>;
   uninstallContextMenu: () => Promise<boolean>;
   getInitialPath: () => Promise<{ path: string; isDirectory: boolean } | null>;
+  getAllInitialPaths?: () => Promise<Array<{ path: string; isDirectory: boolean }>>;
   onOpenExternalPath: (callback: (data: { path: string; isDirectory: boolean }) => void) => () => void;
 }
 

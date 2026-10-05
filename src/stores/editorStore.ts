@@ -213,7 +213,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   openFileTab: (fileData) => {
     const { tabs } = get();
-    const existing = tabs.find((t) => t.title === fileData.title);
+    const existing = tabs.find((t) => {
+      if (fileData.filePath && t.filePath) {
+        return t.filePath.toLowerCase() === fileData.filePath.toLowerCase();
+      }
+      return t.title === fileData.title;
+    });
     if (existing) {
       set({ activeTabId: existing.id });
       return;

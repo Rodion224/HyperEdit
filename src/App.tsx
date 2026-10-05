@@ -39,15 +39,26 @@ export const App: React.FC = () => {
         const fileResult = await openFilePath(data.path);
         if (fileResult) {
           useEditorStore.getState().openFileTab(fileResult);
+          useSettingsStore.getState().toggleSettings(false);
         }
       }
     };
 
-    window.electronAPI.getInitialPath?.().then((target) => {
-      if (target) {
-        handleExternalTarget(target);
-      }
-    }).catch(() => {});
+    if (window.electronAPI.getAllInitialPaths) {
+      window.electronAPI.getAllInitialPaths().then((targets) => {
+        if (Array.isArray(targets) && targets.length > 0) {
+          for (const target of targets) {
+            handleExternalTarget(target);
+          }
+        }
+      }).catch(() => {});
+    } else if (window.electronAPI.getInitialPath) {
+      window.electronAPI.getInitialPath().then((target) => {
+        if (target) {
+          handleExternalTarget(target);
+        }
+      }).catch(() => {});
+    }
 
     const cleanup = window.electronAPI.onOpenExternalPath?.((target) => {
       handleExternalTarget(target);

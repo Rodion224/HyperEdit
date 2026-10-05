@@ -53,6 +53,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   installContextMenu: (language) => ipcRenderer.invoke('contextMenu:install', language),
   uninstallContextMenu: () => ipcRenderer.invoke('contextMenu:uninstall'),
   getInitialPath: () => ipcRenderer.invoke('app:getInitialPath'),
+  getAllInitialPaths: () => ipcRenderer.invoke('app:getAllInitialPaths'),
   onOpenExternalPath: (callback) => {
     const handler = (event, data) => callback(data);
     ipcRenderer.on('app:openExternalPath', handler);

@@ -8,18 +8,11 @@ const {
   installContextMenu,
   uninstallContextMenu,
   parsePathFromArgs,
+  parseAllPathsFromArgs,
   isBinaryOrExecutable,
 } = require('./contextMenuService.cjs');
 
 app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
-
-const gotTheLock = app.requestSingleInstanceLock();
-if (!gotTheLock) {
-  app.quit();
-  process.exit(0);
-}
-
-let pendingExternalPath = parsePathFromArgs(process.argv, app);
 
 app.name = 'HyperEdit';
 const userDataPath = path.join(app.getPath('appData'), 'HyperEdit');
@@ -33,6 +26,14 @@ try {
 } catch (e) {
   console.error('Failed to configure userData path:', e);
 }
+
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+  process.exit(0);
+}
+
+let pendingExternalPaths = parseAllPathsFromArgs(process.argv, app);
 
 const settingsFilePath = path.join(userDataPath, 'settings.json');
 const sessionFilePath = path.join(userDataPath, 'session.json');
@@ -72,9 +73,10 @@ function createWindow() {
   }
 
   mainWindow.webContents.on('did-finish-load', () => {
-    if (pendingExternalPath) {
-      mainWindow.webContents.send('app:openExternalPath', pendingExternalPath);
-      pendingExternalPath = null;
+    if (pendingExternalPaths.length > 0) {
+      for (const target of pendingExternalPaths) {
+        mainWindow.webContents.send('app:openExternalPath', target);
+      }
     }
   });
 
@@ -787,19 +789,33 @@ ipcMain.handle('contextMenu:uninstall', async () => {
 });
 
 ipcMain.handle('app:getInitialPath', async () => {
-  const target = pendingExternalPath;
-  pendingExternalPath = null;
-  return target;
+  if (pendingExternalPaths.length > 0) {
+    return pendingExternalPaths.shift();
+  }
+  return null;
 });
 
-app.on('second-instance', (event, commandLine) => {
+ipcMain.handle('app:getAllInitialPaths', async () => {
+  const targets = [...pendingExternalPaths];
+  pendingExternalPaths = [];
+  return targets;
+});
+
+app.on('second-instance', (event, commandLine, workingDirectory) => {
   if (mainWindow) {
     if (mainWindow.isMinimized()) mainWindow.restore();
+    if (!mainWindow.isVisible()) mainWindow.show();
     mainWindow.focus();
 
-    const target = parsePathFromArgs(commandLine, app);
-    if (target) {
-      mainWindow.webContents.send('app:openExternalPath', target);
+    const targets = parseAllPathsFromArgs(commandLine, app, workingDirectory);
+    if (targets.length > 0) {
+      for (const target of targets) {
+        if (mainWindow.webContents.isLoading()) {
+          pendingExternalPaths.push(target);
+        } else {
+          mainWindow.webContents.send('app:openExternalPath', target);
+        }
+      }
     }
   }
 });

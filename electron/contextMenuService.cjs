@@ -8,6 +8,8 @@ const REG_KEYS = [
   'HKCU\\Software\\Classes\\Directory\\Background\\shell\\HyperEdit',
 ];
 
+const APP_REG_KEY = 'HKCU\\Software\\Classes\\Applications\\HyperEdit.exe';
+
 const BLOCKED_EXTENSIONS = [
   '.exe', '.dll', '.sys', '.com', '.scr', '.msi', '.msp', '.ocx', '.drv', '.cpl', '.efi', '.mui', '.node',
   '.bin', '.obj', '.o', '.lib', '.a', '.so', '.dylib', '.class', '.pyc', '.pyo', '.dex', '.apk', '.wasm', '.pdb',
@@ -180,6 +182,13 @@ async function installContextMenu(app, language = 'auto') {
     }
     await runReg(['add', `${REG_KEYS[2]}\\command`, '/ve', '/d', bgCommand, '/f']);
 
+    await runReg(['add', APP_REG_KEY, '/v', 'FriendlyAppName', '/d', 'HyperEdit', '/f']);
+    if (fs.existsSync(iconPath)) {
+      await runReg(['add', `${APP_REG_KEY}\\DefaultIcon`, '/ve', '/d', `"${iconPath}"`, '/f']);
+    }
+    await runReg(['add', `${APP_REG_KEY}\\shell\\open\\command`, '/ve', '/d', fileCommand, '/f']);
+    await runReg(['add', `${APP_REG_KEY}\\SupportedTypes`, '/v', '.txt', '/d', '', '/f']);
+
     return true;
   } catch (err) {
     console.error('Failed to install context menu:', err);
@@ -193,40 +202,81 @@ async function uninstallContextMenu() {
   for (const key of REG_KEYS) {
     await runReg(['delete', key, '/f']);
   }
+  await runReg(['delete', APP_REG_KEY, '/f']);
   return true;
 }
 
-function parsePathFromArgs(argv, app) {
-  if (!argv || argv.length === 0) return null;
+function parseAllPathsFromArgs(argv, app, baseDir) {
+  if (!argv || !Array.isArray(argv) || argv.length === 0) return [];
 
-  const appPath = app ? path.resolve(app.getAppPath()).toLowerCase() : '';
-  const execPath = process.execPath.toLowerCase();
+  let appPath = '';
+  try {
+    if (app && typeof app.getAppPath === 'function') {
+      appPath = path.resolve(app.getAppPath()).toLowerCase();
+    }
+  } catch (e) {}
+
+  const execPath = process.execPath ? process.execPath.toLowerCase() : '';
+  const cwd = baseDir || process.cwd();
+  const results = [];
+  const seen = new Set();
 
   for (let i = 1; i < argv.length; i++) {
-    const rawArg = argv[i];
-    if (!rawArg) continue;
+    let raw = argv[i];
+    if (typeof raw !== 'string') continue;
+    raw = raw.trim();
+    if (!raw) continue;
 
-    if (rawArg.startsWith('--') || rawArg.startsWith('-')) continue;
+    raw = raw.replace(/^["']+|["']+$/g, '').trim();
+    if (!raw) continue;
 
-    const normalized = path.resolve(rawArg);
-    const lowerNorm = normalized.toLowerCase();
+    if (raw.startsWith('--') || raw.startsWith('-') || raw.startsWith('/')) {
+      continue;
+    }
 
-    if (lowerNorm === execPath || lowerNorm === appPath || lowerNorm.endsWith('\\electron.exe')) {
+    const lowerRaw = raw.toLowerCase();
+    if (
+      lowerRaw === '.' ||
+      lowerRaw === execPath ||
+      lowerRaw === appPath ||
+      lowerRaw.endsWith('\\electron.exe') ||
+      lowerRaw.endsWith('/electron') ||
+      lowerRaw.endsWith('\\node.exe')
+    ) {
       continue;
     }
 
     try {
+      const normalized = path.isAbsolute(raw) ? path.normalize(raw) : path.resolve(cwd, raw);
       if (fs.existsSync(normalized)) {
-        const stat = fs.statSync(normalized);
-        return {
-          path: normalized,
-          isDirectory: stat.isDirectory(),
-        };
+        let realPath = normalized;
+        try {
+          realPath = fs.realpathSync(normalized);
+        } catch (e) {}
+
+        const realLower = realPath.toLowerCase();
+        if (realLower === execPath || realLower === appPath) {
+          continue;
+        }
+
+        if (!seen.has(realLower)) {
+          seen.add(realLower);
+          const stat = fs.statSync(realPath);
+          results.push({
+            path: realPath,
+            isDirectory: stat.isDirectory(),
+          });
+        }
       }
     } catch (e) {}
   }
 
-  return null;
+  return results;
+}
+
+function parsePathFromArgs(argv, app, baseDir) {
+  const all = parseAllPathsFromArgs(argv, app, baseDir);
+  return all.length > 0 ? all[0] : null;
 }
 
 module.exports = {
@@ -235,6 +285,7 @@ module.exports = {
   installContextMenu,
   uninstallContextMenu,
   parsePathFromArgs,
+  parseAllPathsFromArgs,
   isBinaryOrExecutable,
   BLOCKED_EXTENSIONS,
   APPLIES_TO_FILTER,
