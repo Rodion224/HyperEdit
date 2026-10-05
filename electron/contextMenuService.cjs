@@ -131,7 +131,9 @@ async function installContextMenu(app, language = 'auto') {
   const folderTitle = titles.folder;
 
   let iconPath = path.join(__dirname, 'icon.ico');
-  if (!fs.existsSync(iconPath)) {
+  if (app && app.isPackaged) {
+    iconPath = process.execPath;
+  } else if (!fs.existsSync(iconPath)) {
     const altIcon = path.resolve(__dirname, '../public/icon.ico');
     if (fs.existsSync(altIcon)) iconPath = altIcon;
   }

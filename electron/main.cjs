@@ -50,7 +50,7 @@ function createWindow() {
     minWidth: 720,
     minHeight: 480,
     backgroundColor: '#141416',
-    frame: false, // Custom sleek titlebar like VS Code / Obsidian
+    frame: false,
     icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
